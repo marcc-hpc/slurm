@@ -2282,14 +2282,14 @@ static char *
 _make_batch_script(batch_job_launch_msg_t *msg, char *path)
 {
 	FILE *fp = NULL;
-	char  script[MAXPATHLEN];
+	char *script = NULL;
 
 	if (msg->script == NULL) {
 		error("_make_batch_script: called with NULL script");
 		return NULL;
 	}
 
-	snprintf(script, sizeof(script), "%s/%s", path, "slurm_script");
+	xstrfmtcat(script, "%s/%s", path, "slurm_script");
 
 again:
 	if ((fp = safeopen(script, "w", SAFEOPEN_CREATE_ONLY)) == NULL) {
@@ -2321,10 +2321,11 @@ again:
 		error("chmod: %m");
 	}
 
-	return xstrdup(script);
+	return script;
 
 error:
 	(void) unlink(script);
+	xfree(script);
 	return NULL;
 
 }
