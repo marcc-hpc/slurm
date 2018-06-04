@@ -3456,12 +3456,20 @@ extern bool acct_policy_job_runnable_post_select(
 		 * If the association has a GrpCPUMins limit set (and there
 		 * is no QOS with GrpCPUMins set) we may hold the job
 		 */
-		tres_usage = _validate_tres_usage_limits_for_assoc(
-			&tres_pos, assoc_ptr->grp_tres_mins_ctld,
-			qos_rec.grp_tres_mins_ctld,
-			job_tres_time_limit, tres_run_mins,
-			tres_usage_mins, job_ptr->limit_set.tres,
-			safe_limits);
+
+		/* Added by MARCC on 2016-02-26
+		 * Skips limit check if QOS has usage_factor=0
+		 */
+		if (qos_ptr_1->usage_factor == 0)
+			tres_usage = 0;
+		else
+			tres_usage = _validate_tres_usage_limits_for_assoc(
+				&tres_pos, assoc_ptr->grp_tres_mins_ctld,
+				qos_rec.grp_tres_mins_ctld,
+				job_tres_time_limit, tres_run_mins,
+				tres_usage_mins, job_ptr->limit_set.tres,
+				safe_limits);
+
 		switch (tres_usage) {
 		case TRES_USAGE_CUR_EXCEEDS_LIMIT:
 			xfree(job_ptr->state_desc);
