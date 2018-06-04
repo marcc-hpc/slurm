@@ -127,7 +127,8 @@ libcommon_la_SOURCES = 			\
 	slurm_persist_conn.c slurm_persist_conn.h \
 	run_command.c run_command.h	\
 	x11_util.c x11_util.h		\
-	state_control.c state_control.h
+	state_control.c state_control.h \
+	cli_filter.c cli_filter.h
 
 
 EXTRA_libcommon_la_SOURCES = 		\

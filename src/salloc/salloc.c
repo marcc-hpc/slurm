@@ -68,6 +68,7 @@
 #include "src/common/xmalloc.h"
 #include "src/common/xsignal.h"
 #include "src/common/xstring.h"
+#include "src/common/cli_filter.h"
 
 #include "src/salloc/salloc.h"
 #include "src/salloc/opt.h"
@@ -101,6 +102,8 @@ pid_t command_pid = -1;
 uint64_t debug_flags = 0;
 char *work_dir = NULL;
 static int is_interactive;
+static bool cli_post_submit_run = false;
+static List opt_list = NULL;
 
 enum possible_allocation_states allocation_state = NOT_GRANTED;
 pthread_cond_t  allocation_state_cond = PTHREAD_COND_INITIALIZER;
@@ -135,6 +138,8 @@ static void _set_submit_dir_env(void);
 static void _signal_while_allocating(int signo);
 static void _timeout_handler(srun_timeout_msg_t *msg);
 static void _user_msg_handler(srun_user_msg_t *msg);
+static int _salloc_cli_filter_post_submit(uint32_t jobid);
+static salloc_opt_t *_opt_copy(void);
 
 #ifdef HAVE_BG
 static int _wait_bluegene_block_ready(
@@ -175,6 +180,7 @@ static int _set_cluster_name(void *x, void *arg)
 int main(int argc, char **argv)
 {
 	static bool env_cache_set = false;
+	static bool pending_append = false;
 	log_options_t logopt = LOG_OPTS_STDERR_ONLY;
 	job_desc_msg_t *desc = NULL, *first_job = NULL;
 	List job_req_list = NULL, job_resp_list = NULL;
@@ -191,6 +197,7 @@ int main(int argc, char **argv)
 	bool pack_fini = false;
 	int pack_argc, pack_inx, pack_argc_off;
 	char **pack_argv;
+	char *line = NULL, *buf = NULL, *ptrptr = NULL;
 	static char *msg = "Slurm job queue full, sleeping and retrying.";
 	slurm_allocation_callbacks_t callbacks;
 	ListIterator iter_req, iter_resp;
@@ -210,11 +217,18 @@ int main(int argc, char **argv)
 	if (atexit((void (*) (void)) spank_fini) < 0)
 		error("Failed to register atexit handler for plugins: %m");
 
-
 	pack_argc = argc;
 	pack_argv = argv;
 	for (pack_inx = 0; !pack_fini; pack_inx++) {
 		pack_argc_off = -1;
+
+		if (pending_append) {
+			if (!opt_list)
+				opt_list = list_create(NULL);
+			list_append(opt_list, _opt_copy());
+			pending_append = false;
+		}
+
 		if (initialize_and_process_args(pack_argc, pack_argv,
 						&pack_argc_off) < 0) {
 			error("salloc parameter parsing");
@@ -238,6 +252,12 @@ int main(int argc, char **argv)
 
 		if (spank_init_post_opt() < 0) {
 			error("Plugin stack post-option processing failed");
+			exit(error_exit);
+		}
+
+		/* run cli_filter pre_submit */
+		rc = cli_filter_plugin_pre_submit(CLI_SALLOC, (void *) &opt);
+		if (rc != SLURM_SUCCESS) {
 			exit(error_exit);
 		}
 
@@ -288,6 +308,11 @@ int main(int argc, char **argv)
 			list_append(job_req_list, desc);
 		if (!first_job)
 			first_job = desc;
+		pending_append = true;
+	}
+	if (opt_list && pending_append) {		/* Last record */
+		list_append(opt_list, _opt_copy());
+		pending_append = false;
 	}
 	if (!desc) {
 		fatal("%s: desc is NULL", __func__);
@@ -470,14 +495,24 @@ int main(int argc, char **argv)
 		/* Allocation granted to regular job */
 		my_job_id = alloc->job_id;
 
-		if (alloc)
-			print_multi_line_string(
-				alloc->job_submit_user_msg, -1);
+		if (alloc && alloc->job_submit_user_msg) {
+			buf = xstrdup(alloc->job_submit_user_msg);
+			line = strtok_r(buf, "\n", &ptrptr);
+			while (line) {
+				info("%s", line);
+				line = strtok_r(NULL, "\n", &ptrptr);
+			}
+			xfree(buf);
+		}
+
 		info("Granted job allocation %u", my_job_id);
 
 		if (_proc_alloc(alloc) != SLURM_SUCCESS)
 			goto relinquish;
 	}
+
+	if (_salloc_cli_filter_post_submit(my_job_id) != SLURM_SUCCESS)
+		goto relinquish;
 
 	after = time(NULL);
 	if ((saopt.bell == BELL_ALWAYS) ||
@@ -1021,6 +1056,13 @@ static void _pending_callback(uint32_t job_id)
 {
 	info("Pending job allocation %u", job_id);
 	my_job_id = job_id;
+
+	/* run cli_filter post_submit here so it runs while we wait
+         * for allocation */
+	if (_salloc_cli_filter_post_submit(my_job_id) != SLURM_SUCCESS) {
+		slurm_complete_job(my_job_id, 1);
+		exit(1);
+	}
 }
 
 static void _exit_on_signal(int signo)
@@ -1196,6 +1238,50 @@ static void _set_rlimits(char **env)
 			continue;
 		}
 	}
+}
+
+/*
+ * Run cli_filter_post_submit on all opt structures
+ * Convenience function since this might need to run in two spots
+ * uses a static bool to prevent multiple executions
+ */
+static int _salloc_cli_filter_post_submit(uint32_t jobid) {
+	int rc = 0;
+	ListIterator opt_iter = NULL;
+	salloc_opt_t *opt_local = NULL;
+
+	if (cli_post_submit_run) {
+		return SLURM_SUCCESS;
+	}
+
+	if (!opt_list) {
+		rc = cli_filter_plugin_post_submit(CLI_SALLOC, jobid,
+			(void *) &opt);
+		goto term;
+	}
+
+	opt_iter = list_iterator_create(opt_list);
+	while ((opt_local = (salloc_opt_t *) list_next(opt_iter))) {
+		rc += cli_filter_plugin_post_submit(CLI_SALLOC, jobid,
+			(void *) opt_local);
+	}
+term:
+	cli_post_submit_run = true;
+	if (opt_iter)
+		list_iterator_destroy(opt_iter);
+	if (rc != SLURM_SUCCESS)
+		return SLURM_ERROR;
+	return SLURM_SUCCESS;
+}
+
+static salloc_opt_t *_opt_copy(void)
+{
+	salloc_opt_t *opt_dup;
+
+	opt_dup = xmalloc(sizeof(salloc_opt_t));
+	memcpy(opt_dup, &opt, sizeof(salloc_opt_t));
+
+	return opt_dup;
 }
 
 #ifdef HAVE_BG

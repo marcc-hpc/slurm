@@ -69,6 +69,7 @@
 #include "src/common/xmalloc.h"
 #include "src/common/xsignal.h"
 #include "src/common/xstring.h"
+#include "src/common/cli_filter.h"
 
 #include "src/api/step_launch.h"
 
@@ -147,7 +148,6 @@ static void *_srun_signal_mgr(void *no_data);
 static void _step_opt_exclusive(slurm_opt_t *opt_local);
 static int  _validate_relative(resource_allocation_response_msg_t *resp,
 			       slurm_opt_t *opt_local);
-
 
 /*
  * Create an srun job structure w/out an allocation response msg.
@@ -609,7 +609,7 @@ extern void init_srun(int argc, char **argv,
 		      bool handle_signals)
 {
 	bool pack_fini = false;
-	int i, pack_argc, pack_inx, pack_argc_off;
+	int i, pack_argc, pack_inx, pack_argc_off, rc;
 	char **pack_argv;
 
 	/*
@@ -646,6 +646,13 @@ extern void init_srun(int argc, char **argv,
 			error("srun parameter parsing");
 			exit(1);
 		}
+
+		/* run cli_filter pre_submit */
+		rc = cli_filter_plugin_pre_submit(CLI_SRUN, (void *) &opt);
+		if (rc != SLURM_SUCCESS) {
+			exit(error_exit);
+		}
+
 		if ((pack_argc_off >= 0) && (pack_argc_off < pack_argc)) {
 			for (i = pack_argc_off; i < pack_argc; i++) {
 				if (!xstrcmp(pack_argv[i], ":")) {
@@ -1281,6 +1288,14 @@ extern void create_srun_job(void **p_job, bool *got_alloc,
 		*p_job = (void *) srun_job_list;
 	else
 		*p_job = (void *) job;
+
+	/* run cli_filter_post_submit here in case the job immediately
+	 * allocated
+	 */
+	if (srun_cli_filter_post_submit(my_job_id) != SLURM_SUCCESS) {
+		slurm_complete_job(my_job_id, 1);
+		exit(error_exit);
+	}
 }
 
 extern void pre_launch_srun_job(srun_job_t *job, bool slurm_started,

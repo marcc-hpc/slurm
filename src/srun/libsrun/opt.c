@@ -75,6 +75,7 @@
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
 #include "src/common/util-net.h"
+#include "src/common/cli_filter.h"
 
 #include "src/api/pmi_server.h"
 
@@ -224,6 +225,7 @@ time_t	srun_begin_time = 0;
 int	_verbose = 0;
 
 /*---- forward declarations of static variables and functions  ----*/
+static bool srun_cli_job_submit_run = false;
 typedef struct env_vars env_vars_t;
 struct option long_options[] = {
 	{"account",          required_argument, 0, 'A'},
@@ -576,6 +578,14 @@ extern int initialize_and_process_args(int argc, char **argv, int *argc_off)
 
 		/* initialize option defaults */
 		_opt_default();
+		if (pass_number == 1) {
+			/* run cli_filter setup_defaults */
+			int rc = cli_filter_plugin_setup_defaults(CLI_SRUN,
+				(void *) &opt);
+			if (rc != SLURM_SUCCESS) {
+				exit(error_exit);
+			}
+		}
 		if (opt_found || (i > 0)) {
 			xstrfmtcat(sropt.pack_group, "%d", i);
 			sropt.pack_grp_bits = bit_alloc(MAX_PACK_COUNT);
@@ -3344,6 +3354,39 @@ static bool _under_parallel_debugger (void)
 #else
 	return (MPIR_being_debugged != 0);
 #endif
+}
+
+/*
+ * Run cli_filter_post_submit on all opt structures
+ * Convenience function since this might need to run in two spots
+ */
+int srun_cli_filter_post_submit(uint32_t jobid) {
+	int rc = 0;
+	ListIterator opt_iter = NULL;
+	srun_opt_t *opt_local = NULL;
+
+	if (srun_cli_job_submit_run) {
+		return SLURM_SUCCESS;
+	}
+
+	if (!opt_list) {
+		rc = cli_filter_plugin_post_submit(CLI_SRUN, jobid,
+			(void *) &opt);
+		goto term;
+	}
+
+	opt_iter = list_iterator_create(opt_list);
+	while ((opt_local = (srun_opt_t *) list_next(opt_iter))) {
+		rc += cli_filter_plugin_post_submit(CLI_SRUN, jobid,
+			(void *) opt_local);
+	}
+term:
+	srun_cli_job_submit_run = true;
+	if (opt_iter)
+		list_iterator_destroy(opt_iter);
+	if (rc != SLURM_SUCCESS)
+		return SLURM_ERROR;
+	return SLURM_SUCCESS;
 }
 
 

@@ -74,6 +74,7 @@
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
 #include "src/common/util-net.h"
+#include "src/common/cli_filter.h"
 #include "src/salloc/salloc.h"
 #include "src/salloc/opt.h"
 
@@ -213,6 +214,15 @@ extern int initialize_and_process_args(int argc, char **argv, int *argc_off)
 {
 	/* initialize option defaults */
 	_opt_default();
+
+	if (first_pass) {
+		/* run cli_filter setup_defaults */
+		int rc = cli_filter_plugin_setup_defaults(CLI_SALLOC, (void *) &opt);
+		if (rc != SLURM_SUCCESS) {
+			exit(error_exit);
+		}
+	}
+
 
 	/* initialize options with env vars */
 	_opt_env();

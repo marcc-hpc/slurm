@@ -112,6 +112,14 @@ static void _set_pending_job_id(uint32_t job_id)
 {
 	debug2("Pending job allocation %u", job_id);
 	pending_job_id = job_id;
+
+	/* run the post_submit here so the client does not have to
+	 * wait for allocation
+	 */
+	if (srun_cli_filter_post_submit(job_id) != SLURM_SUCCESS) {
+		slurm_complete_job(job_id, 1);
+		exit(1);
+	}
 }
 
 static void *_safe_signal_while_allocating(void *in_data)
@@ -485,7 +493,7 @@ extern resource_allocation_response_msg_t *
 	job_desc_msg_t *j;
 	slurm_allocation_callbacks_t callbacks;
 	int i;
-
+	char *line = NULL, *buf = NULL, *ptrptr = NULL;
 	xassert(srun_opt);
 
 	if (srun_opt->relative_set && srun_opt->relative)
@@ -543,8 +551,15 @@ extern resource_allocation_response_msg_t *
 		}
 	}
 
-	if (resp)
-		print_multi_line_string(resp->job_submit_user_msg, -1);
+	if (resp && resp->job_submit_user_msg) {
+		buf = xstrdup(resp->job_submit_user_msg);
+		line = strtok_r(buf, "\n", &ptrptr);
+		while (line) {
+			info("%s", line);
+			line = strtok_r(NULL, "\n", &ptrptr);
+		}
+		xfree(buf);
+	}
 
 	if (resp && !destroy_job) {
 		/*

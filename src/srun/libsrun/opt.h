@@ -109,4 +109,10 @@ extern slurm_opt_t *get_next_opt(int pack_offset);
  */
 extern int get_max_pack_group(void);
 
+/*
+ * Run cli_filter_post_submit on all opt structures
+ * Convenience function since this might need to run in two spots
+ */
+extern int srun_cli_filter_post_submit(uint32_t jobid);
+
 #endif	/* _HAVE_OPT_H */

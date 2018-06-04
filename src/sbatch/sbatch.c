@@ -58,7 +58,7 @@
 #include "src/common/slurm_rlimits_info.h"
 #include "src/common/xstring.h"
 #include "src/common/xmalloc.h"
-
+#include "src/common/cli_filter.h"
 #include "src/sbatch/opt.h"
 
 #define MAX_RETRIES 15
@@ -76,6 +76,7 @@ static int   _set_rlimit_env(void);
 static void  _set_spank_env(void);
 static void  _set_submit_dir_env(void);
 static int   _set_umask_env(void);
+static sbatch_opt_t *_opt_copy(void);
 
 int main(int argc, char **argv)
 {
@@ -84,11 +85,12 @@ int main(int argc, char **argv)
 	submit_response_msg_t *resp = NULL;
 	char *script_name;
 	char *script_body;
+	char *line = NULL, *buf = NULL, *ptrptr = NULL;
 	char **pack_argv;
 	int script_size = 0, pack_argc, pack_argc_off = 0, pack_inx;
 	int i, rc = SLURM_SUCCESS, retries = 0;
-	bool pack_fini = false;
-	List job_env_list = NULL, job_req_list = NULL;
+	bool pack_fini = false, pending_append = false;
+	List job_env_list = NULL, job_req_list = NULL, opt_list = NULL;
 	sbatch_env_t *local_env = NULL;
 
 	/* force line-buffered output on non-tty outputs */
@@ -133,7 +135,16 @@ int main(int argc, char **argv)
 	pack_argv = argv;
 	for (pack_inx = 0; !pack_fini; pack_inx++) {
 		bool more_packs = false;
+
+		if (pending_append) {
+			if (!opt_list)
+				opt_list = list_create(NULL);
+			list_append(opt_list, _opt_copy());
+			pending_append = false;
+		}
+
 		init_envs(&pack_env);
+
 		process_options_second_pass(pack_argc, pack_argv,
 					    &pack_argc_off, pack_inx,
 					    &more_packs, script_name ?
@@ -153,6 +164,12 @@ int main(int argc, char **argv)
 
 		if (spank_init_post_opt() < 0) {
 			error("Plugin stack post-option processing failed");
+			exit(error_exit);
+		}
+
+		/* run cli_filter pre_submit */
+		rc = cli_filter_plugin_pre_submit(CLI_SBATCH, (void *) &opt);
+		if (rc != SLURM_SUCCESS) {
 			exit(error_exit);
 		}
 
@@ -192,6 +209,12 @@ int main(int argc, char **argv)
 			list_append(job_env_list, local_env);
 			list_append(job_req_list, desc);
 		}
+		pending_append = true;
+	}
+
+	if (opt_list && pending_append) {		/* Last record */
+		list_append(opt_list, _opt_copy());
+		pending_append = false;
 	}
 
 	if (job_env_list) {
@@ -285,7 +308,31 @@ int main(int argc, char **argv)
 		exit(error_exit);
 	}
 
-	print_multi_line_string(resp->job_submit_user_msg, -1);
+	if (resp->job_submit_user_msg) {
+		buf = xstrdup(resp->job_submit_user_msg);
+		line = strtok_r(buf, "\n", &ptrptr);
+		while (line) {
+			info("%s", line);
+			line = strtok_r(NULL, "\n", &ptrptr);
+		}
+		xfree(buf);
+	}
+
+	/* run cli_filter post_submit 
+	 * ignore the return code because the job is already submitted
+	 * and cannot be recalled like it can for srun and salloc */
+	if (!opt_list) {
+		(void) cli_filter_plugin_post_submit(CLI_SBATCH, resp->job_id,
+			(void *) &opt);
+	} else {
+		sbatch_opt_t *opt_local = NULL;
+		ListIterator opt_iter = list_iterator_create(opt_list);
+		while ((opt_local = (sbatch_opt_t *) list_next(opt_iter))) {
+			(void) cli_filter_plugin_post_submit(CLI_SBATCH, resp->job_id,
+				(void *) opt_local);
+		}
+		list_iterator_destroy(opt_iter);
+	}
 
 	if (!sbopt.parsable) {
 		printf("Submitted batch job %u", resp->job_id);
@@ -1055,4 +1102,14 @@ static int _set_rlimit_env(void)
 	}
 
 	return rc;
+}
+
+static sbatch_opt_t *_opt_copy(void)
+{
+	sbatch_opt_t *opt_dup;
+
+	opt_dup = xmalloc(sizeof(sbatch_opt_t));
+	memcpy(opt_dup, &opt, sizeof(sbatch_opt_t));
+
+	return opt_dup;
 }
