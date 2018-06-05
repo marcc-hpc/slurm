@@ -70,6 +70,120 @@ typedef struct salloc_opt {
 	bool kill_command_signal_set;
 	bool no_shell;			/* --no-shell			*/
 	uint16_t wait_all_nodes;	/* --wait-nodes-ready=val	*/
+	char *progname;			/* argv[0] of this program or	*/
+
+	char *clusters;			/* cluster to run this on. */
+	char *user;			/* local username		*/
+	uid_t uid;			/* local uid			*/
+	gid_t gid;			/* local gid			*/
+	uid_t euid;			/* effective user --uid=user	*/
+	gid_t egid;			/* effective group --gid=group	*/
+	char *cwd;			/* current working directory	*/
+	int ntasks;			/* --ntasks			*/
+	bool ntasks_set;		/* ntasks explicitly set	*/
+	int cpus_per_task;		/* --cpus-per-task=n		*/
+	bool cpus_set;			/* cpus_per_task explicitly set	*/
+	int min_nodes;			/* --nodes=n			*/
+	int max_nodes;			/* --nodes=x-n			*/
+	bool nodes_set;			/* nodes explicitly set		*/
+	int sockets_per_node;		/* --sockets-per-node=n		*/
+	int cores_per_socket;		/* --cores-per-socket=n		*/
+	uint32_t job_flags;		/* --kill_invalid_dep, --gres-flags */
+	int threads_per_core;		/* --threads-per-core=n		*/
+	bool threads_per_core_set;	/* --threads-per-core explicitly set */
+	int ntasks_per_node;		/* --ntasks-per-node=n		*/
+	int ntasks_per_socket;		/* --ntasks-per-socket=n	*/
+	int ntasks_per_core;		/* --ntasks-per-core=n		*/
+	bool ntasks_per_core_set;	/* ntasks-per-core explicitly set */
+	char *hint_env;			/* SLURM_HINT env var setting	*/
+	bool hint_set;			/* --hint set explicitly set	*/
+	mem_bind_type_t mem_bind_type;	/* --mem-bind=		*/
+	char *mem_bind;			/* binding map for map/mask_mem	*/
+	bool extra_set;			/* extra node info explicitly set */
+	int time_limit;			/* --time, in minutes		*/
+	char *time_limit_str;		/* --time			*/
+	int time_min;			/* --min-time, in minutes	*/
+	char *time_min_str;		/* --min-time			*/
+	char *partition;		/* --partition			*/
+	uint32_t profile;		/* --profile=[all | none]	*/
+	enum task_dist_states distribution;
+					/* --distribution		*/
+	uint32_t plane_size;		/* lllp distribution -> plane_size for
+					 * when -m plane=<# of lllp per
+					 * plane> */
+	char *job_name;			/* --job-name			*/
+	uint32_t jobid;			/* --jobid			*/
+	bool jobid_set;			/* jobid explicitly set		*/
+	char *mpi_type;			/* --mpi=type			*/
+	char *dependency;		/* --dependency			*/
+	int nice;			/* --nice			*/
+	uint32_t priority;		/* --priority			*/
+	char *account;			/* --account			*/
+	char *comment;			/* --comment			*/
+	char *qos;			/* --qos			*/
+	int immediate;			/* --immediate			*/
+	uint16_t warn_flags;		/* --signal=flags:<int>@<time>	*/
+	uint16_t warn_signal;		/* --signal=flags:<int>@<time>	*/
+	uint16_t warn_time;		/* --signal=flags:<int>@<time>	*/
+
+	bool hold;			/* --hold			*/
+	bool no_kill;			/* --no-kill			*/
+	char *acctg_freq;		/* --acctg-freq=<type1>=<freq1>,... */
+	bool overcommit;		/* --overcommit			*/
+	uint16_t shared;		/* --share			*/
+	char *licenses;			/* --licenses			*/
+	char *network;			/* --network			*/
+	int quiet;
+	int verbose;
+
+	/* constraint options */
+	int pn_min_cpus;		/* --mincpus			*/
+	int64_t mem_per_cpu;		/* --mem-per-cpu		*/
+	int64_t pn_min_memory;		/* --mem			*/
+	long pn_min_tmp_disk;		/* --tmp			*/
+	char *constraints;		/* --constraints		*/
+	char *c_constraints;		/* --cluster-constraints	*/
+	char *gres;			/* --gres			*/
+	bool contiguous;		/* --contiguous			*/
+	char *nodelist;			/* --nodelist=node1,node2,...	*/
+	char *exc_nodes;		/* --exclude=node1,node2,...	*/
+
+	/* BLUEGENE SPECIFIC */
+	uint16_t geometry[HIGHEST_DIMENSIONS];/* --geometry		*/
+	bool reboot;			/* --reboot			*/
+	bool no_rotate;			/* --no_rotate			*/
+	uint16_t conn_type[HIGHEST_DIMENSIONS];/* --conn-type		*/
+	char *blrtsimage;		/* BlrtsImage for block		*/
+	char *linuximage;		/* LinuxImage for block		*/
+	char *mloaderimage;		/* mloaderImage for block	*/
+	char *ramdiskimage;		/* RamDiskImage for block	*/
+	/*********************/
+
+	time_t begin;			/* --begin			*/
+	char *extra;			/* unused			*/
+	uint16_t mail_type;		/* --mail-type			*/
+	char *mail_user;		/* --mail-user			*/
+	int get_user_env_time;		/* --get-user-env[=timeout]	*/
+	int get_user_env_mode;		/* --get-user-env=[S|L]		*/
+	char *wckey;			/* workload characterization key */
+	char *reservation;		/* --reservation		*/
+	int req_switch;			/* min number of switches	*/
+	int wait4switch;		/* max time to wait for min switches */
+	char **spank_job_env;		/* SPANK controlled environment for job
+					 * Prolog and Epilog		*/
+	int spank_job_env_size;		/* size of spank_job_env	*/
+	int core_spec;			/* --core-spec			*/
+	uint32_t cpu_freq_min;		/* Minimum cpu frequency	*/
+	uint32_t cpu_freq_max;		/* Maximum cpu frequency	*/
+	uint32_t cpu_freq_gov;		/* cpu frequency governor	*/
+	uint8_t power_flags;		/* Power management options	*/
+	char *mcs_label;		/* mcs label			*/
+	time_t deadline;		/* ---deadline			*/
+	uint32_t delay_boot;		/* --delay-boot			*/
+	uint16_t x11;			/* --x11			*/
+	char *x11_magic_cookie;		/* cookie retrieved from xauth	*/
+	/* no x11_target_host here, alloc_host will be equivalent */
+	uint16_t x11_target_port;	/* target display TCP port on localhost */
 } salloc_opt_t;
 
 /*
@@ -103,6 +217,121 @@ typedef struct sbatch_opt {
 	bool wait;			/* --wait			*/
 	uint16_t wait_all_nodes;	/* --wait-nodes-ready=val	*/
 	char *wrap;
+
+	char *progname;			/* argv[0] of this program or	*/
+
+	char *clusters;			/* cluster to run this on. */
+	char *user;			/* local username		*/
+	uid_t uid;			/* local uid			*/
+	gid_t gid;			/* local gid			*/
+	uid_t euid;			/* effective user --uid=user	*/
+	gid_t egid;			/* effective group --gid=group	*/
+	char *cwd;			/* current working directory	*/
+	int ntasks;			/* --ntasks			*/
+	bool ntasks_set;		/* ntasks explicitly set	*/
+	int cpus_per_task;		/* --cpus-per-task=n		*/
+	bool cpus_set;			/* cpus_per_task explicitly set	*/
+	int min_nodes;			/* --nodes=n			*/
+	int max_nodes;			/* --nodes=x-n			*/
+	bool nodes_set;			/* nodes explicitly set		*/
+	int sockets_per_node;		/* --sockets-per-node=n		*/
+	int cores_per_socket;		/* --cores-per-socket=n		*/
+	uint32_t job_flags;		/* --kill_invalid_dep, --gres-flags */
+	int threads_per_core;		/* --threads-per-core=n		*/
+	bool threads_per_core_set;	/* --threads-per-core explicitly set */
+	int ntasks_per_node;		/* --ntasks-per-node=n		*/
+	int ntasks_per_socket;		/* --ntasks-per-socket=n	*/
+	int ntasks_per_core;		/* --ntasks-per-core=n		*/
+	bool ntasks_per_core_set;	/* ntasks-per-core explicitly set */
+	char *hint_env;			/* SLURM_HINT env var setting	*/
+	bool hint_set;			/* --hint set explicitly set	*/
+	mem_bind_type_t mem_bind_type;	/* --mem-bind=		*/
+	char *mem_bind;			/* binding map for map/mask_mem	*/
+	bool extra_set;			/* extra node info explicitly set */
+	int time_limit;			/* --time, in minutes		*/
+	char *time_limit_str;		/* --time			*/
+	int time_min;			/* --min-time, in minutes	*/
+	char *time_min_str;		/* --min-time			*/
+	char *partition;		/* --partition			*/
+	uint32_t profile;		/* --profile=[all | none]	*/
+	enum task_dist_states distribution;
+					/* --distribution		*/
+	uint32_t plane_size;		/* lllp distribution -> plane_size for
+					 * when -m plane=<# of lllp per
+					 * plane> */
+	char *job_name;			/* --job-name			*/
+	uint32_t jobid;			/* --jobid			*/
+	bool jobid_set;			/* jobid explicitly set		*/
+	char *mpi_type;			/* --mpi=type			*/
+	char *dependency;		/* --dependency			*/
+	int nice;			/* --nice			*/
+	uint32_t priority;		/* --priority			*/
+	char *account;			/* --account			*/
+	char *comment;			/* --comment			*/
+	char *qos;			/* --qos			*/
+	int immediate;			/* --immediate			*/
+	uint16_t warn_flags;		/* --signal=flags:<int>@<time>	*/
+	uint16_t warn_signal;		/* --signal=flags:<int>@<time>	*/
+	uint16_t warn_time;		/* --signal=flags:<int>@<time>	*/
+
+	bool hold;			/* --hold			*/
+	bool no_kill;			/* --no-kill			*/
+	char *acctg_freq;		/* --acctg-freq=<type1>=<freq1>,... */
+	bool overcommit;		/* --overcommit			*/
+	uint16_t shared;		/* --share			*/
+	char *licenses;			/* --licenses			*/
+	char *network;			/* --network			*/
+	int quiet;
+	int verbose;
+
+	/* constraint options */
+	int pn_min_cpus;		/* --mincpus			*/
+	int64_t mem_per_cpu;		/* --mem-per-cpu		*/
+	int64_t pn_min_memory;		/* --mem			*/
+	long pn_min_tmp_disk;		/* --tmp			*/
+	char *constraints;		/* --constraints		*/
+	char *c_constraints;		/* --cluster-constraints	*/
+	char *gres;			/* --gres			*/
+	bool contiguous;		/* --contiguous			*/
+	char *nodelist;			/* --nodelist=node1,node2,...	*/
+	char *exc_nodes;		/* --exclude=node1,node2,...	*/
+
+	/* BLUEGENE SPECIFIC */
+	uint16_t geometry[HIGHEST_DIMENSIONS];/* --geometry		*/
+	bool reboot;			/* --reboot			*/
+	bool no_rotate;			/* --no_rotate			*/
+	uint16_t conn_type[HIGHEST_DIMENSIONS];/* --conn-type		*/
+	char *blrtsimage;		/* BlrtsImage for block		*/
+	char *linuximage;		/* LinuxImage for block		*/
+	char *mloaderimage;		/* mloaderImage for block	*/
+	char *ramdiskimage;		/* RamDiskImage for block	*/
+	/*********************/
+
+	time_t begin;			/* --begin			*/
+	char *extra;			/* unused			*/
+	uint16_t mail_type;		/* --mail-type			*/
+	char *mail_user;		/* --mail-user			*/
+	int get_user_env_time;		/* --get-user-env[=timeout]	*/
+	int get_user_env_mode;		/* --get-user-env=[S|L]		*/
+	char *wckey;			/* workload characterization key */
+	char *reservation;		/* --reservation		*/
+	int req_switch;			/* min number of switches	*/
+	int wait4switch;		/* max time to wait for min switches */
+	char **spank_job_env;		/* SPANK controlled environment for job
+					 * Prolog and Epilog		*/
+	int spank_job_env_size;		/* size of spank_job_env	*/
+	int core_spec;			/* --core-spec			*/
+	uint32_t cpu_freq_min;		/* Minimum cpu frequency	*/
+	uint32_t cpu_freq_max;		/* Maximum cpu frequency	*/
+	uint32_t cpu_freq_gov;		/* cpu frequency governor	*/
+	uint8_t power_flags;		/* Power management options	*/
+	char *mcs_label;		/* mcs label			*/
+	time_t deadline;		/* ---deadline			*/
+	uint32_t delay_boot;		/* --delay-boot			*/
+	uint16_t x11;			/* --x11			*/
+	char *x11_magic_cookie;		/* cookie retrieved from xauth	*/
+	/* no x11_target_host here, alloc_host will be equivalent */
+	uint16_t x11_target_port;	/* target display TCP port on localhost */
 } sbatch_opt_t;
 
 /*
@@ -179,6 +408,121 @@ typedef struct srun_opt {
 	bool unbuffered;		/* --unbuffered			*/
 	bool user_managed_io;		/* 0 for "normal" IO,		*/
 					/* 1 for "user manged" IO	*/
+
+	char *progname;			/* argv[0] of this program or	*/
+
+	char *clusters;			/* cluster to run this on. */
+	char *user;			/* local username		*/
+	uid_t uid;			/* local uid			*/
+	gid_t gid;			/* local gid			*/
+	uid_t euid;			/* effective user --uid=user	*/
+	gid_t egid;			/* effective group --gid=group	*/
+	char *cwd;			/* current working directory	*/
+	int ntasks;			/* --ntasks			*/
+	bool ntasks_set;		/* ntasks explicitly set	*/
+	int cpus_per_task;		/* --cpus-per-task=n		*/
+	bool cpus_set;			/* cpus_per_task explicitly set	*/
+	int min_nodes;			/* --nodes=n			*/
+	int max_nodes;			/* --nodes=x-n			*/
+	bool nodes_set;			/* nodes explicitly set		*/
+	int sockets_per_node;		/* --sockets-per-node=n		*/
+	int cores_per_socket;		/* --cores-per-socket=n		*/
+	uint32_t job_flags;		/* --kill_invalid_dep, --gres-flags */
+	int threads_per_core;		/* --threads-per-core=n		*/
+	bool threads_per_core_set;	/* --threads-per-core explicitly set */
+	int ntasks_per_node;		/* --ntasks-per-node=n		*/
+	int ntasks_per_socket;		/* --ntasks-per-socket=n	*/
+	int ntasks_per_core;		/* --ntasks-per-core=n		*/
+	bool ntasks_per_core_set;	/* ntasks-per-core explicitly set */
+	char *hint_env;			/* SLURM_HINT env var setting	*/
+	bool hint_set;			/* --hint set explicitly set	*/
+	mem_bind_type_t mem_bind_type;	/* --mem-bind=		*/
+	char *mem_bind;			/* binding map for map/mask_mem	*/
+	bool extra_set;			/* extra node info explicitly set */
+	int time_limit;			/* --time, in minutes		*/
+	char *time_limit_str;		/* --time			*/
+	int time_min;			/* --min-time, in minutes	*/
+	char *time_min_str;		/* --min-time			*/
+	char *partition;		/* --partition			*/
+	uint32_t profile;		/* --profile=[all | none]	*/
+	enum task_dist_states distribution;
+					/* --distribution		*/
+	uint32_t plane_size;		/* lllp distribution -> plane_size for
+					 * when -m plane=<# of lllp per
+					 * plane> */
+	char *job_name;			/* --job-name			*/
+	uint32_t jobid;			/* --jobid			*/
+	bool jobid_set;			/* jobid explicitly set		*/
+	char *mpi_type;			/* --mpi=type			*/
+	char *dependency;		/* --dependency			*/
+	int nice;			/* --nice			*/
+	uint32_t priority;		/* --priority			*/
+	char *account;			/* --account			*/
+	char *comment;			/* --comment			*/
+	char *qos;			/* --qos			*/
+	int immediate;			/* --immediate			*/
+	uint16_t warn_flags;		/* --signal=flags:<int>@<time>	*/
+	uint16_t warn_signal;		/* --signal=flags:<int>@<time>	*/
+	uint16_t warn_time;		/* --signal=flags:<int>@<time>	*/
+
+	bool hold;			/* --hold			*/
+	bool no_kill;			/* --no-kill			*/
+	char *acctg_freq;		/* --acctg-freq=<type1>=<freq1>,... */
+	bool overcommit;		/* --overcommit			*/
+	uint16_t shared;		/* --share			*/
+	char *licenses;			/* --licenses			*/
+	char *network;			/* --network			*/
+	int quiet;
+	int verbose;
+
+	/* constraint options */
+	int pn_min_cpus;		/* --mincpus			*/
+	int64_t mem_per_cpu;		/* --mem-per-cpu		*/
+	int64_t pn_min_memory;		/* --mem			*/
+	long pn_min_tmp_disk;		/* --tmp			*/
+	char *constraints;		/* --constraints		*/
+	char *c_constraints;		/* --cluster-constraints	*/
+	char *gres;			/* --gres			*/
+	bool contiguous;		/* --contiguous			*/
+	char *nodelist;			/* --nodelist=node1,node2,...	*/
+	char *exc_nodes;		/* --exclude=node1,node2,...	*/
+
+	/* BLUEGENE SPECIFIC */
+	uint16_t geometry[HIGHEST_DIMENSIONS];/* --geometry		*/
+	bool reboot;			/* --reboot			*/
+	bool no_rotate;			/* --no_rotate			*/
+	uint16_t conn_type[HIGHEST_DIMENSIONS];/* --conn-type		*/
+	char *blrtsimage;		/* BlrtsImage for block		*/
+	char *linuximage;		/* LinuxImage for block		*/
+	char *mloaderimage;		/* mloaderImage for block	*/
+	char *ramdiskimage;		/* RamDiskImage for block	*/
+	/*********************/
+
+	time_t begin;			/* --begin			*/
+	char *extra;			/* unused			*/
+	uint16_t mail_type;		/* --mail-type			*/
+	char *mail_user;		/* --mail-user			*/
+	int get_user_env_time;		/* --get-user-env[=timeout]	*/
+	int get_user_env_mode;		/* --get-user-env=[S|L]		*/
+	char *wckey;			/* workload characterization key */
+	char *reservation;		/* --reservation		*/
+	int req_switch;			/* min number of switches	*/
+	int wait4switch;		/* max time to wait for min switches */
+	char **spank_job_env;		/* SPANK controlled environment for job
+					 * Prolog and Epilog		*/
+	int spank_job_env_size;		/* size of spank_job_env	*/
+	int core_spec;			/* --core-spec			*/
+	uint32_t cpu_freq_min;		/* Minimum cpu frequency	*/
+	uint32_t cpu_freq_max;		/* Maximum cpu frequency	*/
+	uint32_t cpu_freq_gov;		/* cpu frequency governor	*/
+	uint8_t power_flags;		/* Power management options	*/
+	char *mcs_label;		/* mcs label			*/
+	time_t deadline;		/* ---deadline			*/
+	uint32_t delay_boot;		/* --delay-boot			*/
+	uint16_t x11;			/* --x11			*/
+	char *x11_magic_cookie;		/* cookie retrieved from xauth	*/
+	/* no x11_target_host here, alloc_host will be equivalent */
+	uint16_t x11_target_port;	/* target display TCP port on localhost */
 } srun_opt_t;
 
 typedef struct slurm_options {
